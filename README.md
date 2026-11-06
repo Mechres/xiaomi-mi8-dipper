@@ -53,7 +53,7 @@ Nothing in this port depends on that fault.
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
-| Audio: speaker (TAS2557), 2 microphones (WCD9340) | ✅ ADSP + q6 routing; see `tools/audio-defaults.sh` |
+| Audio: speaker (TAS2557), earpiece and 2 microphones (WCD9340) | ✅ ADSP + q6 routing; ALSA UCM profile in `configs/ucm2`, plain-ALSA defaults in `tools/audio-defaults.sh` |
 | Modem, Wi-Fi, SLPI/CDSP, cameras | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
 
 ---
@@ -179,7 +179,9 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   `/lib/firmware/qcom/sdm845/Xiaomi/dipper/adsp.mbn`. The speaker amp needs
   `/lib/firmware/tas2557_uCDSP.bin`, which is `firmware/tas2557_uCDSP_aac.bin`
   (or the identical `_goer.bin`) from `vendor.img`. Then run
-  `tools/audio-defaults.sh` for the mixer routing.
+  `tools/audio-defaults.sh` for the mixer routing, or copy `configs/ucm2/*`
+  into `/usr/share/alsa/ucm2/` so PipeWire/PulseAudio see Speaker,
+  Earpiece, Mic (bottom) and Mic2 (top).
 
 Measured power (battery current with the USB input limit set to 0, so the
 phone runs from the battery): **~200 mA with the screen on, ~120 mA with it
@@ -243,6 +245,7 @@ tools/bt-address.start                 set the factory Bluetooth address
 configs/mkinitfs-gpu.files             GPU firmware into the initramfs
 tools/pil-squash.py                    merge split .mdt/.bNN firmware into .mbn
 tools/audio-defaults.sh                default speaker/mic mixer routing
+configs/ucm2/                          ALSA UCM profile (card "Xiaomi Mi 8")
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

@@ -262,7 +262,23 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   display driver bound it is owned by Linux. The bwmon workaround was
   removed; the DT now has a comment to keep `&mdss` enabled.
 
-## 11. Misc observations
+## 11. Earpiece, UCM, and the silent microphones
+
+* Earpiece: WCD9340 EAR via SLIMBUS_0_RX -> SLIM RX0 (AIF1_PB) -> RX INT0
+  -> CLSH DSM -> EAR PA. Verified the same way as the speaker: a tone on the
+  earpiece shows up at 0.18 RMS on ADC1. Together with the speaker test this
+  maps the mics: ADC3 is the bottom mic (next to the speaker), ADC1 the top.
+* After an unrelated reboot every capture read exact digital zeros, but only
+  while no SLIMbus playback was running. The codec's `MCLK` DAPM supply is
+  only reachable through the machine routing `RX_BIAS <- MCLK` (playback);
+  nothing on the capture path depends on it, so a capture-only stream left
+  the codec clock off. The first test had passed only because an earlier
+  playback left MCLK running. Fix: `"ADC1".."ADC3", "MCLK"` in
+  `audio-routing`.
+* `configs/ucm2` adds an ALSA UCM profile (HiFi: Speaker on hw:0,0,
+  Earpiece on hw:0,1, Mic/Mic2 on hw:0,2), self-tested through `alsaucm`.
+
+## 12. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

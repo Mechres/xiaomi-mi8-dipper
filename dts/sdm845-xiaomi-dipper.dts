@@ -422,9 +422,16 @@
 	pinctrl-0 = <&quat_mi2s_active &quat_mi2s_sd0_active>;
 	pinctrl-names = "default";
 	model = "Xiaomi Mi 8";
-	/* Mic biases as in the downstream sdm845-tavil-snd-card routing */
+	/*
+	 * Mic biases as in the downstream sdm845-tavil-snd-card routing. The
+	 * ADCs also need the codec MCLK: without it a capture-only stream
+	 * (no SLIMbus playback running) records digital silence.
+	 */
 	audio-routing =
 		"RX_BIAS", "MCLK",
+		"ADC1", "MCLK",
+		"ADC2", "MCLK",
+		"ADC3", "MCLK",
 		"AMIC1", "MIC BIAS4",
 		"AMIC2", "MIC BIAS2",
 		"AMIC3", "MIC BIAS1";
