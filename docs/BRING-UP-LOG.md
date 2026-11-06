@@ -148,7 +148,27 @@ is fine and is now in the DT for the panel; describing **L28 at 3.3 V stops
 the kernel before USB comes up, with no watchdog reset**. L28 is left out
 until it is understood (probably the touch controller supply).
 
-## 5. Misc observations
+## 5. Display
+
+* The panel node was found in the downstream DTB (board-id 55):
+  `qcom,mdss_dsi_ss_notch_fhd_ea8074_cmd`, the one the bootloader names in
+  `msm_drm.dsi_display0=`. 1080×2248, command mode, 4 lanes, 60 Hz, no DSC,
+  brightness over DCS (0–1023).
+* linux-mdss-dsi-panel-driver-generator produced a working driver. Two
+  fixes were needed for the 7.1 tree: `linux/device-id/of.h` → `linux/of.h`,
+  and `devm_drm_panel_add()` (newer API) → `drm_panel_add()` plus a remove
+  callback, as in `panel-samsung-ea8076`. A single-object compile inside the
+  pmbootstrap build tree caught the second one in seconds.
+* The DT mirrors `sdm845-xiaomi-perseus` (same reset/TE GPIOs).
+* First test: the panel lit up with a login prompt but USB never came up.
+  Only `vmlinuz` had been replaced; the modules and initramfs on the phone
+  were from the repo kernel (same `7.1.0-rc1-sdm845` string, different build,
+  no `MODVERSIONS`), so the USB gadget modules did not work with it.
+  Installing the rebuilt kernel package on the phone fixed it.
+* Brightness: `/sys/class/backlight/ae94000.dsi.0`, read-back works.
+* `DSI PLL(0) lock failed` at PHY probe is printed once and is harmless.
+
+## 6. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

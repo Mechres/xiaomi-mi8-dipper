@@ -6,7 +6,8 @@
 
 A device tree and postmarketOS device package for running **mainline Linux** on
 the **Xiaomi Mi 8 (`dipper`)** as a headless node, reachable over USB
-networking with SSH. The display, touch, modem and Wi-Fi are not used.
+networking with SSH, with the built-in AMOLED panel as a text console.
+Touch, modem and Wi-Fi are not used.
 
 No Mi 8 device tree exists in mainline or in the sdm845-mainline tree. This
 one was written for this phone and debugged without a UART. Three
@@ -30,7 +31,7 @@ Nothing in this port depends on that fault.
 | **Storage** | UFS 2.1, 128 GB (`sda`–`sdf` LUNs) |
 | **PMICs** | PM8998, PMI8998, PM8005 |
 | **Board** | `qcom,board-id = <55 0>` (downstream name "Dipper new MP v2.1"), `msm-id 321 0x20001` |
-| **Panel** | Samsung EA8074 AMOLED, 1080×2248, DSI command mode (no mainline driver yet) |
+| **Panel** | Samsung EA8074 AMOLED, 1080×2248, DSI command mode (driver in `kernel/`) |
 | **Bootloader** | Xiaomi ABL, unlocked, fastboot; accepts a v0 boot image with an appended DTB |
 | **Debug UART** | `uart9` (GPIO 4/5, 1.8 V); test points not located, **not used** for this port |
 
@@ -46,7 +47,8 @@ Nothing in this port depends on that fault.
 | Charger / fuel gauge (PMI8998) | ✅ `pmi8998-charger`, `qcom-battery` report correctly |
 | RTC, thermal zones | ✅ |
 | Reboot / reboot to fastboot from Linux | ✅ (see `tools/reboot_to.c`) |
-| Display / touch | ❌ not yet (cmd-mode panel needs a panel driver) |
+| Display (DSI0, EA8074 panel, DRM/fbcon) | ✅ text console; DCS brightness via `/sys/class/backlight` |
+| Touch | ❌ not yet (its supply, L28, stops the boot when described; see the log) |
 | Modem, Wi-Fi, audio, GPU, cameras, DSPs | ❌ disabled in the DT |
 
 ---
@@ -94,14 +96,21 @@ scripts/build-dtb.sh /tmp/sdm845-dt          # -> out/sdm845-xiaomi-dipper.dtb
 
 # 2. device package in a local pmaports checkout
 pmbootstrap init                              # pick any device, channel edge
-P=$(pmbootstrap config aports)/device/testing/device-xiaomi-dipper
+A=$(pmbootstrap config aports)
+P=$A/device/testing/device-xiaomi-dipper
 mkdir -p "$P"
 cp pmaports/device-xiaomi-dipper/* out/sdm845-xiaomi-dipper.dtb "$P"/
 pmbootstrap checksum device-xiaomi-dipper
 pmbootstrap config device xiaomi-dipper
 pmbootstrap config ui none                    # headless
 
-# 3. build and flash (phone in fastboot: Vol Down + Power)
+# 3. kernel with the EA8074 panel driver (built in; the DT enables the
+#    display and expects it)
+kernel/apply-to-pmaports.sh "$A"
+pmbootstrap checksum linux-postmarketos-qcom-sdm845
+pmbootstrap build --force linux-postmarketos-qcom-sdm845
+
+# 4. build and flash (phone in fastboot: Vol Down + Power)
 pmbootstrap install
 pmbootstrap flasher flash_rootfs              # rootfs -> userdata
 pmbootstrap flasher flash_kernel              # boot.img -> boot
@@ -122,6 +131,23 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
 * On some host ports fastboot hangs at the first transfer; a USB 2.0 port or
   hub works reliably.
 * Holding Vol Down while Linux runs can reset the phone (PON resin).
+
+## Display
+
+The panel driver was generated with
+[linux-mdss-dsi-panel-driver-generator](https://github.com/msm8916-mainline/linux-mdss-dsi-panel-driver-generator)
+from the panel node in the device tree appended to the stock MIUI kernel
+(board-id 55, `qcom,mdss_dsi_ss_notch_fhd_ea8074_cmd`), then adapted to the
+7.1 DRM panel API and to the conventions of the in-tree `panel-samsung-ea8076`
+driver (Xiaomi Mi Mix 3, the closest relative). The DT side mirrors the
+upstream `sdm845-xiaomi-perseus` DT: reset on GPIO 6, TE on GPIO 10
+(`mdp_vsync`), `vddio` from L14, `vci` from a fixed regulator switched by
+GPIO 35, DSI `vdda` from L26 and the PHY from L1.
+
+The driver is built in (`=y`): the pmOS kernel has DRM/msm built in and no
+module versioning, so building the driver as a module, or swapping only
+`vmlinuz`, can leave the installed modules mismatched. Install the rebuilt
+kernel package so `vmlinuz`, modules and initramfs come from one build.
 
 ## Debugging Without a UART
 
@@ -153,6 +179,8 @@ worked, all in `tools/`:
 
 ```
 dts/sdm845-xiaomi-dipper.dts           device tree (GPL-2.0)
+kernel/0001-drm-panel-add-samsung-ea8074.patch  panel driver (GPL-2.0)
+kernel/apply-to-pmaports.sh            add it to the pmOS kernel package
 pmaports/device-xiaomi-dipper/         postmarketOS device package
 scripts/fetch-dt-headers.sh            download DT sources from sdm845-mainline
 scripts/build-dtb.sh                   compile the DTB
