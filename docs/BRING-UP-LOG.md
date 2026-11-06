@@ -290,7 +290,20 @@ the written value.) `tools/charge-limit` uses that to hold 60-80 %, with a
 failsafe below 20 % or 3.5 V, and resumes charging whenever it stops.
 Measured while suspended with the display off: about 40 mA from the battery.
 
-## 13. Misc observations
+## 13. Package pinning and the 1970 clock
+
+* `apk add ./kernel.apk` pins the package as `name><checksum` in
+  `/etc/apk/world`. `apk upgrade -s --available` showed that this does not
+  stop a downgrade to the repository kernel (no panel driver, modules signed
+  with another key). An exact `name=version` constraint does.
+* Services installed while the clock still said 1970 never started after a
+  reboot. OpenRC noticed clock skew against files dated at image build time
+  and set its deptree mtime to the build date, so newer-but-1970 init
+  scripts were never picked up. Fixed by setting the time with busybox
+  `ntpd` once (the RTC is not writable; `swclock-offset` stores the offset at
+  shutdown), touching the 1970-dated files and `rc-update -u`.
+
+## 14. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

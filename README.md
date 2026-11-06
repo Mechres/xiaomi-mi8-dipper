@@ -152,9 +152,19 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   enforces module signatures (lockdown is forced to integrity) and every
   build signs with its own key: a flashed `vmlinuz` from one build cannot
   load the modules of another, which first shows up as a missing USB
-  gadget. On the phone:
-  `apk add "linux-postmarketos-qcom-sdm845=<your version>"` writes the pin
-  to `/etc/apk/world`.
+  gadget. Pin it in `/etc/apk/world` with an exact version, e.g.
+  `linux-postmarketos-qcom-sdm845=7.1_rc1-r6` (same for the device
+  package). Installing a local `.apk` file writes a `pkg><checksum` entry
+  instead, which is only a preference: `apk upgrade --available` replaced
+  the kernel with the repository build despite it. Check with
+  `apk upgrade -s --available`.
+* **Set the clock first.** The PMIC RTC starts in 1970, while the image's
+  files are dated at build time. OpenRC then dates its dependency cache to
+  the build date ("Clock skew detected"), and every service added later
+  (with a 1970 mtime) is silently ignored at boot. Set the time once
+  (`ntpd -n -q -p pool.ntp.org` with internet over USB);
+  `swclock-offset` keeps it across reboots. Touch files created before
+  that and run `rc-update -u`.
 * **Bluetooth:** `apk add linux-firmware-qca bluez`, and install
   `tools/bt-address.start` as `/etc/local.d/bt-address.start` so the
   controller uses the factory address from `persist` (read-only mount).
