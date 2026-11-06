@@ -538,7 +538,7 @@
 
 &usb_1_dwc3 {
 	dr_mode = "peripheral";
-	/* downstream dipper also runs this port at high speed only */
+	/* The Mi 8's Type-C port is USB 2.0 only (as downstream) */
 	maximum-speed = "high-speed";
 };
 

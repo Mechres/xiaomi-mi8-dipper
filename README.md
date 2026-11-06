@@ -31,6 +31,7 @@ Nothing in this port depends on that fault.
 | **Storage** | UFS 2.1, 128 GB (`sda`–`sdf` LUNs) |
 | **PMICs** | PM8998, PMI8998, PM8005 |
 | **Board** | `qcom,board-id = <55 0>` (downstream name "Dipper new MP v2.1"), `msm-id 321 0x20001` |
+| **USB** | Type-C, USB 2.0 only; used in peripheral mode for networking |
 | **Panel** | Samsung EA8074 AMOLED, 1080×2248, DSI command mode (driver in `kernel/`) |
 | **Bootloader** | Xiaomi ABL, unlocked, fastboot; accepts a v0 boot image with an appended DTB |
 | **Debug UART** | `uart9` (GPIO 4/5, 1.8 V); test points not located, **not used** for this port |
