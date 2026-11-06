@@ -51,8 +51,9 @@ Nothing in this port depends on that fault.
 | Bluetooth (WCN3990 on UART6) | ✅ firmware from `linux-firmware-qca`, scans BR/EDR + LE; factory address via `tools/bt-address.start` |
 | Buttons, hall sensor (lid switch), vibrator | ✅ power, Vol Up/Down; `SW_LID` on GPIO 124; `qcom,spmi-haptics` force feedback |
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
+| GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touch | ❌ not yet (its supply, L28, stops the boot when described; see the log) |
-| Modem, Wi-Fi, audio, GPU, cameras, DSPs | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
+| Modem, Wi-Fi, audio, cameras, DSPs | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
 
 ---
 
@@ -154,6 +155,16 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   `/etc/deviceinfo` (`deviceinfo_usb_network_host_addr`); both are copied
   into the initramfs by mkinitfs.
 
+* **GPU firmware.** `apk add linux-firmware-qcom` provides `a630_sqe.fw`
+  and `a630_gmu.bin`. The zap shader is signed by Xiaomi and is not
+  redistributable: take `firmware/a630_zap.elf` from the vendor image of
+  your stock fastboot ROM (`simg2img vendor.img vendor.raw`, then
+  `debugfs -R "dump /firmware/a630_zap.elf a630_zap.mbn" vendor.raw`) and
+  install it as `/lib/firmware/qcom/sdm845/Xiaomi/dipper/a630_zap.mbn`. msm
+  is built in and loads the firmware before the rootfs is mounted, so also
+  copy `configs/mkinitfs-gpu.files` to `/etc/mkinitfs/files/` and run
+  `mkinitfs`, then flash the regenerated `/boot/boot.img`.
+
 Measured power (battery current with the USB input limit set to 0, so the
 phone runs from the battery): **~200 mA with the screen on, ~120 mA with it
 off** at 4.26 V.
@@ -213,6 +224,7 @@ scripts/build-dtb.sh                   compile the DTB
 tools/reboot_to.c                      reboot into fastboot from Linux
 tools/99-mi8-kmsglog.sh                persistent + live kernel log hook
 tools/bt-address.start                 set the factory Bluetooth address
+configs/mkinitfs-gpu.files             GPU firmware into the initramfs
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

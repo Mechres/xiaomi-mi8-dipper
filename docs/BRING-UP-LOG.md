@@ -191,7 +191,21 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   Writing `current_max` back does not restore the original limit (the
   readback follows the hardware's adaptive limit); a reboot does.
 
-## 7. Misc observations
+## 7. GPU
+
+* `&gpu` enabled with the zap shader from `vendor/firmware/a630_zap.elf`
+  (a complete 32-bit ELF, usable as the `.mbn` directly).
+* First boot: `adreno_request_fw` failed with -ENOENT at 0.62 s. msm is
+  built in and binds the GPU before the rootfs is mounted; putting the three
+  firmware files into the initramfs (mkinitfs file list) fixed it.
+* Opening the render node is not enough to power it up; a surfaceless EGL
+  context (`eglinfo -p surfaceless`) is. Mesa reports `FD630`, OpenGL ES
+  3.2. Idle with cluster sleep stays stable with the GPU enabled.
+* `gcc`/`gpucc` still report `sync_state() pending due to 506a000.gmu`: the
+  GMU node never binds as a device of its own (the GPU driver uses it
+  internally).
+
+## 8. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.
