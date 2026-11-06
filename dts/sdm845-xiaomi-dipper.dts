@@ -9,10 +9,11 @@
  *
  * Enabled: CPU, UFS, USB (peripheral, for USB networking), RPMh regulators,
  * buttons and hall sensor, haptics, Bluetooth (WCN3990 on UART6), the GPU
- * (Adreno 630), the PMI8998 charger/fuel gauge, and the display (Samsung
- * EA8074 cmd-mode panel on DSI0; needs the panel-samsung-ea8074 driver). The
- * modem, Wi-Fi, DSPs, touch, audio and cameras are left disabled:
- * this unit has a failed RF transceiver and the modem crash-loops if started.
+ * (Adreno 630), the touchscreen (ST FTS5 on i2c14), the PMI8998 charger and
+ * fuel gauge, and the display (Samsung EA8074 cmd-mode panel on DSI0; needs
+ * the panel-samsung-ea8074 driver). The modem, Wi-Fi, DSPs, audio and
+ * cameras are left disabled: this unit has a failed RF transceiver and the
+ * modem crash-loops if started.
  */
 
 /dts-v1/;
@@ -174,6 +175,16 @@
 		regulator-always-on;
 	};
 
+	/* Touch controller vdd (1.8 V), "disp_vddio_vreg" on GPIO 23 downstream */
+	ts_vdd_vreg: ts-vdd-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "ts_vdd";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
 	vreg_s4a_1p8: vreg-s4a-1p8 {
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_s4a_1p8";
@@ -211,8 +222,7 @@
 
 		/*
 		 * Panel vddio. Left on by the bootloader (downstream proxy
-		 * consumer). Note: also describing L28 (3.3 V, boot-on downstream)
-		 * stops the kernel before USB comes up; leave it out for now.
+		 * consumer).
 		 */
 		vreg_l14a_1p8: ldo14 {
 			regulator-min-microvolt = <1800000>;
@@ -244,6 +254,17 @@
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3312000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		/*
+		 * Touch avdd. Keep it a range with no initial mode, so nothing is
+		 * sent to RPMh for it until the touch driver enables it: a fixed
+		 * 3.3 V boot-on/always-on HPM description stopped the boot before
+		 * USB came up.
+		 */
+		vreg_l28a_3p3: ldo28 {
+			regulator-min-microvolt = <2856000>;
+			regulator-max-microvolt = <3312000>;
 		};
 
 		vreg_l26a_1p2: ldo26 {
@@ -338,6 +359,30 @@
 		vddrf-supply = <&vreg_l17a_1p3>;
 		vddch0-supply = <&vreg_l25a_3p3>;
 		max-speed = <3200000>;
+	};
+};
+
+&qupv3_id_1 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&i2c14 {
+	status = "okay";
+
+	/* ST FingerTip FTS5 ("st,fts" downstream), stmfts driver */
+	touchscreen@49 {
+		compatible = "st,stmfts5";
+		reg = <0x49>;
+		interrupts-extended = <&tlmm 31 IRQ_TYPE_LEVEL_LOW>;
+		avdd-supply = <&vreg_l28a_3p3>;
+		vdd-supply = <&ts_vdd_vreg>;
+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2248>;
 	};
 };
 

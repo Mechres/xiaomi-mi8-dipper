@@ -52,7 +52,7 @@ Nothing in this port depends on that fault.
 | Buttons, hall sensor (lid switch), vibrator | ✅ power, Vol Up/Down; `SW_LID` on GPIO 124; `qcom,spmi-haptics` force feedback |
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
-| Touch | ❌ not yet (its supply, L28, stops the boot when described; see the log) |
+| Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
 | Modem, Wi-Fi, audio, cameras, DSPs | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
 
 ---

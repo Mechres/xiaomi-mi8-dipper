@@ -205,7 +205,25 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   GMU node never binds as a device of its own (the GPU driver uses it
   internally).
 
-## 8. Misc observations
+## 8. Touchscreen
+
+* Downstream: `st,fts` at 0x49 on `i2c@a98000` (mainline `i2c14`, QUP1, needs
+  `gpi_dma1`), IRQ GPIO 31, reset GPIO 32 (active low), `avdd` = L28 (3.3 V),
+  `vdd` = a 1.8 V switch on GPIO 23 ("disp_vddio_vreg" downstream).
+* The L28 mystery: described as fixed 3.3 V with boot-on, always-on and
+  `regulator-initial-mode = HPM`, it stopped the kernel before USB (no
+  watchdog reset). Described as a range with no initial mode, nothing is sent
+  for it at boot and the touch driver enables it later without trouble.
+  To test it live, the touch node was first bound to `stmfts` with the module
+  blacklisted, then `modprobe stmfts` over SSH while streaming `/dev/kmsg`.
+* The controller is an FTS5. `st,stmfts` (FTS4 protocol) fails with -110;
+  `st,stmfts5` works. FTS5 support comes from David Heidelberg's and Petr
+  Hodina's "Input: support for STM FTS5" series, which sdm845-mainline 7.1
+  already carries in its v4 form; v6+ fix a sense-on value that the cover
+  letter says broke the Mi 8, but multi-touch reporting worked here with the
+  v4 code. The `chip_id`/`fw_ver` sysfs files read 0 with this version.
+
+## 9. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.
