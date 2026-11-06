@@ -1,0 +1,33 @@
+# Reference: <https://postmarketos.org/devicepkg>
+# Headless port. sdm845-xiaomi-dipper.dtb is built from dts/ in this repo
+# with scripts/build-dtb.sh; copy it next to this file, then run
+# `pmbootstrap checksum device-xiaomi-dipper`.
+pkgname=device-xiaomi-dipper
+pkgdesc="Xiaomi Mi 8"
+pkgver=1
+pkgrel=3
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-postmarketos-qcom-sdm845
+	mkbootimg
+	postmarketos-base
+	soc-qcom
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	sdm845-xiaomi-dipper.dtb
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+	install -Dm644 "$srcdir"/sdm845-xiaomi-dipper.dtb \
+		"$pkgdir"/boot/dtbs-xiaomi-dipper/qcom/sdm845-xiaomi-dipper.dtb
+}
