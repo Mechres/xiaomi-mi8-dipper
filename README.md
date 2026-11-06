@@ -52,6 +52,7 @@ Nothing in this port depends on that fault.
 | Bluetooth (WCN3990 on UART6) | ✅ firmware from `linux-firmware-qca`, scans BR/EDR + LE; factory address via `tools/bt-address.start` |
 | Buttons, hall sensor (lid switch), vibrator | ✅ power, Vol Up/Down; `SW_LID` on GPIO 124; `qcom,spmi-haptics` force feedback |
 | Power key toggles the display | ✅ `tools/powerkey-display` (OpenRC service, needs `evtest`, `coreutils`) |
+| Battery charge limit for a phone kept on USB | ✅ `tools/charge-limit` holds 60-80 % by suspending the USB input (data keeps working) |
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
@@ -255,6 +256,7 @@ tools/audio-defaults.sh                default speaker/mic mixer routing
 configs/ucm2/                          ALSA UCM profile (card "Xiaomi Mi 8")
 configs/asound.conf                    plain-ALSA default device with speaker volume
 tools/powerkey-display(.initd)         power key turns the display off/on
+tools/charge-limit(.initd,.confd)      keep the battery at 60-80 % on USB power
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

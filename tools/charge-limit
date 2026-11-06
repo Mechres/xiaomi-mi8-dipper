@@ -1,0 +1,43 @@
+#!/bin/sh
+# Keep the battery between CHARGE_LOW and CHARGE_HIGH percent while the phone
+# lives on USB power. Charging is paused by suspending the PMI8998 USB input
+# (writing "Unknown" to the charger's status property sets USBIN_SUSPEND); the
+# phone then runs from the battery while USB data keeps working. Writing any
+# other status ("Charging") resumes it. Settings: /etc/conf.d/charge-limit.
+CHARGE_LOW=60
+CHARGE_HIGH=80
+CHARGE_INTERVAL=60
+[ -r /etc/conf.d/charge-limit ] && . /etc/conf.d/charge-limit
+
+CHG=/sys/class/power_supply/pmi8998-charger/status
+BAT=/sys/class/power_supply/qcom-battery
+state=
+
+set_charging() {
+	[ "$state" = "$1" ] && return
+	if [ "$1" = on ]; then
+		echo Charging > $CHG
+	else
+		echo Unknown > $CHG
+	fi
+	state=$1
+	logger -t charge-limit "charging $1 at $(cat $BAT/capacity)%"
+}
+
+# Never leave the input suspended when we stop.
+trap 'state=; set_charging on; exit 0' TERM INT
+
+while :; do
+	cap=$(cat $BAT/capacity)
+	uv=$(cat $BAT/voltage_now)
+	if [ "$cap" -lt 20 ] || [ "$uv" -lt 3500000 ]; then
+		set_charging on		# failsafe, whatever the thresholds say
+	elif [ "$cap" -ge "$CHARGE_HIGH" ]; then
+		set_charging off
+	elif [ "$cap" -le "$CHARGE_LOW" ] || [ -z "$state" ]; then
+		set_charging on
+	fi
+	# background sleep + wait, so the trap runs immediately on stop
+	sleep "$CHARGE_INTERVAL" &
+	wait $!
+done

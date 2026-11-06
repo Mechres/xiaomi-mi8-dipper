@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+description="Keep the battery between CHARGE_LOW and CHARGE_HIGH percent"
+command=/usr/local/bin/charge-limit
+supervisor=supervise-daemon
+
+depend() {
+	after udev
+}
+
+stop_post() {
+	# belt and braces: charging must never stay paused without the limiter
+	echo Charging > /sys/class/power_supply/pmi8998-charger/status
+}

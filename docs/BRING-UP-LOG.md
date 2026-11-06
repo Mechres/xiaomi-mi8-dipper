@@ -278,7 +278,19 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
 * `configs/ucm2` adds an ALSA UCM profile (HiFi: Speaker on hw:0,0,
   Earpiece on hw:0,1, Mic/Mic2 on hw:0,2), self-tested through `alsaucm`.
 
-## 12. Misc observations
+## 12. Charge limit
+
+The phone is meant to stay on USB permanently, which keeps the battery at
+100 %. The `qcom_smbx` charger has no charge-limit property, but writing its
+`status` property sets USBIN_SUSPEND (`Unknown` suspends, any other value
+resumes): the phone then runs from the battery while USB data keeps
+working, and the input current limit comes back by itself on resume. (Writing
+`current_max` instead also works but its readback is the AICL result, not
+the written value.) `tools/charge-limit` uses that to hold 60-80 %, with a
+failsafe below 20 % or 3.5 V, and resumes charging whenever it stops.
+Measured while suspended with the display off: about 40 mA from the battery.
+
+## 13. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

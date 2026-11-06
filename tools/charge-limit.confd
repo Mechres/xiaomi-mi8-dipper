@@ -1,0 +1,5 @@
+# /etc/conf.d/charge-limit: battery window for a phone kept on USB power
+CHARGE_LOW=60
+CHARGE_HIGH=80
+# seconds between checks
+CHARGE_INTERVAL=60
