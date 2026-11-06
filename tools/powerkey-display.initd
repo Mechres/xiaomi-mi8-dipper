@@ -1,0 +1,8 @@
+#!/sbin/openrc-run
+description="Toggle the display with the power key"
+command=/usr/local/bin/powerkey-display
+supervisor=supervise-daemon
+
+depend() {
+	after udev
+}

@@ -51,6 +51,7 @@ Nothing in this port depends on that fault.
 | Display (DSI0, EA8074 panel, DRM/fbcon) | ✅ text console, console blanking/unblank, DCS brightness via `/sys/class/backlight` |
 | Bluetooth (WCN3990 on UART6) | ✅ firmware from `linux-firmware-qca`, scans BR/EDR + LE; factory address via `tools/bt-address.start` |
 | Buttons, hall sensor (lid switch), vibrator | ✅ power, Vol Up/Down; `SW_LID` on GPIO 124; `qcom,spmi-haptics` force feedback |
+| Power key toggles the display | ✅ `tools/powerkey-display` (OpenRC service, needs `evtest`, `coreutils`) |
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
@@ -253,6 +254,7 @@ tools/pil-squash.py                    merge split .mdt/.bNN firmware into .mbn
 tools/audio-defaults.sh                default speaker/mic mixer routing
 configs/ucm2/                          ALSA UCM profile (card "Xiaomi Mi 8")
 configs/asound.conf                    plain-ALSA default device with speaker volume
+tools/powerkey-display(.initd)         power key turns the display off/on
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

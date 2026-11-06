@@ -1,0 +1,32 @@
+#!/bin/sh
+# Toggle the display with the power key. The key is grabbed exclusively, so
+# the console no longer sees it (by default any key press only unblanks).
+# The current state comes from DRM, so a screen blanked by the console
+# timeout is switched back on by the next press. Needs evtest and stdbuf
+# (coreutils).
+CONN=/sys/class/drm/card0-DSI-1/dpms
+FB=/sys/class/graphics/fb0/blank
+
+dev=
+for d in /sys/class/input/event*; do
+	[ "$(cat "$d/device/name" 2>/dev/null)" = pm8941_pwrkey ] && dev=/dev/input/${d##*/}
+done
+[ -n "$dev" ] || { echo "power key input device not found" >&2; exit 1; }
+
+# evtest writes into a pipe; line-buffer it so key presses are not held back
+stdbuf -oL evtest --grab "$dev" | while read -r line; do
+	case "$line" in
+	*"(KEY_POWER), value 1"*)
+		if [ "$(cat $CONN)" = On ]; then
+			echo 4 > $FB	# FB_BLANK_POWERDOWN: panel off
+		else
+			echo 0 > $FB
+		fi
+		;;
+	esac
+done &
+
+# Stopping the service signals only this shell, which would leave the
+# grabbing evtest behind; wait in the background so the trap runs at once.
+trap 'pkill -f "evtest --grab $dev"; exit 0' TERM INT
+wait
