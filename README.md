@@ -183,6 +183,11 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   `tools/audio-defaults.sh` for the mixer routing, or copy `configs/ucm2/*`
   into `/usr/share/alsa/ucm2/` so PipeWire/PulseAudio see Speaker,
   Earpiece, Mic (bottom) and Mic2 (top).
+  For plain ALSA, `configs/asound.conf` (as `/etc/asound.conf`) adds a
+  software `Speaker` volume (the speaker path has no hardware gain; it
+  plays at full volume otherwise) and makes `default` use the speaker and
+  the bottom mic. Play something once, `amixer sset Speaker 70%`, then
+  `alsactl store`; the `alsa` boot service recreates the control.
 
 Measured power (battery current with the USB input limit set to 0, so the
 phone runs from the battery): **~200 mA with the screen on, ~120 mA with it
@@ -247,6 +252,7 @@ configs/mkinitfs-gpu.files             GPU firmware into the initramfs
 tools/pil-squash.py                    merge split .mdt/.bNN firmware into .mbn
 tools/audio-defaults.sh                default speaker/mic mixer routing
 configs/ucm2/                          ALSA UCM profile (card "Xiaomi Mi 8")
+configs/asound.conf                    plain-ALSA default device with speaker volume
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 
