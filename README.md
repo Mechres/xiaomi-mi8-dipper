@@ -47,9 +47,12 @@ Nothing in this port depends on that fault.
 | Charger / fuel gauge (PMI8998) | ✅ `pmi8998-charger`, `qcom-battery` report correctly |
 | RTC, thermal zones | ✅ |
 | Reboot / reboot to fastboot from Linux | ✅ (see `tools/reboot_to.c`) |
-| Display (DSI0, EA8074 panel, DRM/fbcon) | ✅ text console; DCS brightness via `/sys/class/backlight` |
+| Display (DSI0, EA8074 panel, DRM/fbcon) | ✅ text console, console blanking/unblank, DCS brightness via `/sys/class/backlight` |
+| Bluetooth (WCN3990 on UART6) | ✅ firmware from `linux-firmware-qca`, scans BR/EDR + LE; factory address via `tools/bt-address.start` |
+| Buttons, hall sensor (lid switch), vibrator | ✅ power, Vol Up/Down; `SW_LID` on GPIO 124; `qcom,spmi-haptics` force feedback |
+| Suspend to idle (s2idle) | ✅ RTC wake tested |
 | Touch | ❌ not yet (its supply, L28, stops the boot when described; see the log) |
-| Modem, Wi-Fi, audio, GPU, cameras, DSPs | ❌ disabled in the DT |
+| Modem, Wi-Fi, audio, GPU, cameras, DSPs | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
 
 ---
 
@@ -132,6 +135,29 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   hub works reliably.
 * Holding Vol Down while Linux runs can reset the phone (PON resin).
 
+## After Installing
+
+* **Pin the kernel.** The display driver lives in your locally built
+  `linux-postmarketos-qcom-sdm845`. A plain `apk upgrade` would replace it
+  with the repository build, which has no panel driver, and (because the
+  kernel has no module versioning) a mismatch between the flashed `vmlinuz`
+  and the installed modules breaks the USB gadget. On the phone:
+  `apk add "linux-postmarketos-qcom-sdm845=<your version>"` writes the pin
+  to `/etc/apk/world`.
+* **Bluetooth:** `apk add linux-firmware-qca bluez`, and install
+  `tools/bt-address.start` as `/etc/local.d/bt-address.start` so the
+  controller uses the factory address from `persist` (read-only mount).
+* **Internet over USB:** NAT on the host plus, on the phone,
+  `ip route replace default via <host-ip> dev usb0` and a `resolv.conf`.
+  The USB subnet and the host-side MAC can be changed with
+  `/etc/unudhcpd.conf` (`unudhcpd_host_ip`, `unudhcpd_client_ip`) and
+  `/etc/deviceinfo` (`deviceinfo_usb_network_host_addr`); both are copied
+  into the initramfs by mkinitfs.
+
+Measured power (battery current with the USB input limit set to 0, so the
+phone runs from the battery): **~200 mA with the screen on, ~120 mA with it
+off** at 4.26 V.
+
 ## Display
 
 The panel driver was generated with
@@ -186,6 +212,7 @@ scripts/fetch-dt-headers.sh            download DT sources from sdm845-mainline
 scripts/build-dtb.sh                   compile the DTB
 tools/reboot_to.c                      reboot into fastboot from Linux
 tools/99-mi8-kmsglog.sh                persistent + live kernel log hook
+tools/bt-address.start                 set the factory Bluetooth address
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

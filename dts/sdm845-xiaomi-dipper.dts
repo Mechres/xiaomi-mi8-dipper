@@ -8,7 +8,8 @@
  * reserved-memory map printed by the stock MIUI kernel on this phone.
  *
  * Enabled: CPU, UFS, USB (peripheral, for USB networking), RPMh regulators,
- * buttons, the PMI8998 charger/fuel gauge, and the display (Samsung EA8074
+ * buttons and hall sensor, haptics, Bluetooth (WCN3990 on UART6), the
+ * PMI8998 charger/fuel gauge, and the display (Samsung EA8074
  * cmd-mode panel on DSI0; needs the panel-samsung-ea8074 driver). The
  * modem, Wi-Fi, DSPs, GPU, touch, audio and cameras are left disabled:
  * this unit has a failed RF transceiver and the modem crash-loops if started.
@@ -48,17 +49,31 @@
 	qcom,board-id = <55 0>;
 	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
 
+	aliases {
+		serial1 = &uart6;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		autorepeat;
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&vol_up_pin_a>;
+		pinctrl-0 = <&vol_up_pin_a &hall_sensor_default>;
 
 		key-vol-up {
 			label = "Volume Up";
 			linux,code = <KEY_VOLUMEUP>;
 			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
+		};
+
+		/* Magnetic cover sensor, "hall_key" on GPIO 124 downstream */
+		switch-hall {
+			label = "Hall Effect Sensor";
+			gpios = <&tlmm 124 GPIO_ACTIVE_LOW>;
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_LID>;
+			linux,can-disable;
+			wakeup-source;
 		};
 	};
 
@@ -182,6 +197,12 @@
 			regulator-boot-on;
 		};
 
+		vreg_l7a_1p8: ldo7 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l12a_1p8: ldo12 {
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
@@ -201,6 +222,12 @@
 			regulator-always-on;
 		};
 
+		vreg_l17a_1p3: ldo17 {
+			regulator-min-microvolt = <1304000>;
+			regulator-max-microvolt = <1304000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l20a_2p95: ldo20 {
 			regulator-min-microvolt = <2960000>;
 			regulator-max-microvolt = <2968000>;
@@ -210,6 +237,12 @@
 		vreg_l24a_3p075: ldo24 {
 			regulator-min-microvolt = <3088000>;
 			regulator-max-microvolt = <3088000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l25a_3p3: ldo25 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3312000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -262,6 +295,12 @@
 	status = "okay";
 };
 
+/* LRA vibrator; play rate from the downstream DT (same as beryllium) */
+&pmi8998_haptics {
+	qcom,wave-play-rate-us = <4878>;
+	status = "okay";
+};
+
 &pmi8998_charger {
 	monitored-battery = <&battery>;
 	status = "okay";
@@ -280,6 +319,26 @@
  */
 &tlmm {
 	gpio-reserved-ranges = <0 4>, <81 4>;
+};
+
+&qupv3_id_0 {
+	status = "okay";
+};
+
+/* WCN3990 Bluetooth; independent of the (dead) modem, unlike its Wi-Fi */
+&uart6 {
+	pinctrl-0 = <&qup_uart6_4pin>;
+	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,wcn3990-bt";
+
+		vddio-supply = <&vreg_s4a_1p8>;
+		vddxo-supply = <&vreg_l7a_1p8>;
+		vddrf-supply = <&vreg_l17a_1p3>;
+		vddch0-supply = <&vreg_l25a_3p3>;
+		max-speed = <3200000>;
+	};
 };
 
 &ufs_mem_hc {
@@ -387,6 +446,14 @@
 		function = "mdp_vsync";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+
+	hall_sensor_default: hall-sensor-default-state {
+		pins = "gpio124";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		input-enable;
 	};
 
 	sde_te_suspend: sde-te-suspend-state {

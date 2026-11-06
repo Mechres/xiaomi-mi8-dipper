@@ -145,8 +145,9 @@ MP v2.1") keeps `pm8998_l2` (1.2 V) always on; L14 (1.8 V, panel `vddio`) and
 L28 (3.3 V) are left on from boot. Describing L2 as always-on did not fix the
 idle hang. Tested one at a time on top of the interconnect fix: L14 (1.8 V)
 is fine and is now in the DT for the panel; describing **L28 at 3.3 V stops
-the kernel before USB comes up, with no watchdog reset**. L28 is left out
-until it is understood (probably the touch controller supply).
+the kernel before USB comes up, with no watchdog reset**. L28 is the `avdd`
+of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
+31, reset GPIO 32), whose driver is not in mainline. Left out for now.
 
 ## 5. Display
 
@@ -168,7 +169,29 @@ until it is understood (probably the touch controller supply).
 * Brightness: `/sys/class/backlight/ae94000.dsi.0`, read-back works.
 * `DSI PLL(0) lock failed` at PHY probe is printed once and is harmless.
 
-## 6. Misc observations
+## 6. Bluetooth, buttons, haptics, suspend, power
+
+* Bluetooth: the WCN3990's BT half is a UART device with its own firmware,
+  independent of the modem, so it works on this unit even though Wi-Fi
+  cannot. DT as on beryllium (`vddio` S4A, `vddxo` L7, `vddrf` L17,
+  `vddch0` L25, UART6 on QUP0). Firmware `qca/crbtfw21.tlv` and
+  `crnv21.bin` from `linux-firmware-qca`; controller reports SOC 0x40010214.
+  The bootloader passes no BD address; Xiaomi keeps it as 6 raw bytes in
+  `persist/wlan_bt/bt.mac` (OUI A4:50:46), applied with `btmgmt public-addr`.
+* Hall sensor: downstream `hall_key` on GPIO 124 (active low, no pull),
+  exposed as `SW_LID` through gpio-keys.
+* Haptics: PMI8998 LRA, `qcom,wave-play-rate-us = <4878>` (downstream and
+  beryllium agree); `fftest` rumble effects upload and play.
+* Display blanking (console blank) and unblank from the power key work, so
+  the panel driver's off/on path works.
+* s2idle with an RTC alarm: suspends and resumes cleanly.
+* Power: with the USB input current limit set to 0 (`current_max` on
+  `pmi8998-charger`) the phone runs from the battery and the fuel gauge
+  shows the real draw: ~200 mA screen on, ~120 mA screen off at 4.26 V.
+  Writing `current_max` back does not restore the original limit (the
+  readback follows the hardware's adaptive limit); a reboot does.
+
+## 7. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.
