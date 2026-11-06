@@ -135,8 +135,8 @@ but changes their `compatible`, so no driver binds and `fw_devlink` keeps the
 providers waiting forever (in its default strict mode). With that, the
 complete rootfs runs with cluster idle and every module loaded.
 
-Still open: which bandwidth path needs a sleep vote. Something on this board
-keeps using DDR or the gladiator NoC while the APSS cluster sleeps.
+See section 10 for the actual cause (the bootloader's splash scan-out) and
+why this workaround was later removed.
 
 ## 4. Regulators
 
@@ -163,8 +163,9 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
 * The DT mirrors `sdm845-xiaomi-perseus` (same reset/TE GPIOs).
 * First test: the panel lit up with a login prompt but USB never came up.
   Only `vmlinuz` had been replaced; the modules and initramfs on the phone
-  were from the repo kernel (same `7.1.0-rc1-sdm845` string, different build,
-  no `MODVERSIONS`), so the USB gadget modules did not work with it.
+  were from the repo kernel. The kernel forces lockdown=integrity, so module
+  signatures are enforced, and each build signs with its own key: the USB
+  gadget modules were rejected.
   Installing the rebuilt kernel package on the phone fixed it.
 * Brightness: `/sys/class/backlight/ae94000.dsi.0`, read-back works.
 * `DSI PLL(0) lock failed` at PHY probe is printed once and is harmless.
@@ -245,7 +246,23 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   RMS, ADC2 (headset input; the Mi 8 has no jack) and ADC4 stay at noise.
   That proves both the speaker and the microphones.
 
-## 10. Misc observations
+## 10. The idle hang, root-caused
+
+* The interconnect core clears the boot-time (maximum) votes of all nodes
+  only when the last provider reaches `sync_state()`. Bisecting providers
+  (letting only the CPU or only the LLCC bwmon bind) therefore proved
+  nothing: one unsynced provider keeps every node at maximum.
+* A debug kernel parameter `icc_keep_init=<node,...>` (patch to
+  `icc_sync_state()`, not part of this repo) let chosen nodes keep their
+  boot votes. With the display, GPU, audio and touch enabled by then,
+  keeping no node at all no longer hung: the extra consumers changed the
+  picture.
+* The same DT with only `&mdss` disabled hangs ~10 s after boot. The
+  bootloader's continuous-splash scan-out is the orphaned DDR user; with the
+  display driver bound it is owned by Linux. The bwmon workaround was
+  removed; the DT now has a comment to keep `&mdss` enabled.
+
+## 11. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

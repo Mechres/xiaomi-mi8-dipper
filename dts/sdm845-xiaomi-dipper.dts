@@ -280,23 +280,6 @@
 	};
 };
 
-/*
- * Keep the gladiator/memory NoC interconnect providers from reaching
- * sync_state(). When they do, the bootloader's bandwidth votes are dropped
- * and the next cluster power collapse (cluster_sleep_0) hard-hangs this
- * phone, ~16 s into boot. The CPU/LLCC bandwidth monitors are their last
- * consumers: leave the nodes enabled (so fw_devlink keeps waiting for them)
- * but with a compatible no driver binds. Disabling them instead makes the
- * sync happen even earlier. TODO: find the path that needs a sleep vote.
- */
-&{/soc@0/pmu@114a000} {
-	compatible = "xiaomi,dipper-llcc-bwmon-unused";
-};
-
-&{/soc@0/pmu@1436400} {
-	compatible = "xiaomi,dipper-cpu-bwmon-unused";
-};
-
 /* Audio DSP (independent of the modem); firmware from the stock NON-HLOS image */
 &adsp_pas {
 	firmware-name = "qcom/sdm845/Xiaomi/dipper/adsp.mbn";
@@ -582,6 +565,12 @@
 	firmware-name = "qcom/sdm845/Xiaomi/dipper/a630_zap.mbn";
 };
 
+/*
+ * Keep the display enabled. The bootloader leaves MDSS scanning out its
+ * splash screen from DDR; if no driver owns it, nothing votes for that
+ * memory path, and once the interconnect providers reach sync_state() the
+ * next cluster power collapse hangs the SoC (~16 s into boot).
+ */
 &mdss {
 	status = "okay";
 };

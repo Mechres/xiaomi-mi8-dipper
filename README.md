@@ -70,23 +70,27 @@ different debugging technique to find; see the bring-up log for the evidence.
    no log. Found by diffing against the old Mi 8 Pro (`equuleus`) DT that
    sdm845-mainline carried until 5.15.
 
-2. **Cluster idle hangs once the NoC votes drop.** With the full rootfs, the
-   phone hard-hung ~16 s into every boot (watchdog reset, or a silent freeze).
-   It is not the deferred-probe timeout that fires at the same moment
-   (`deferred_probe_timeout=-1` still hangs). Proven live over SSH: the phone
-   runs while something keeps the CPUs awake, dies seconds after they are
-   allowed to idle, and survives if one core's deep idle state is disabled
-   (so the cluster can never power-collapse).
+2. **Cluster idle hangs once the NoC votes drop.** With the full rootfs,
+   the phone hard-hung ~16 s into every boot (watchdog reset, or a silent
+   freeze). It is not the deferred-probe timeout that fires at the same
+   moment (`deferred_probe_timeout=-1` still hangs). Proven live over SSH: the
+   phone runs while something keeps the CPUs awake, dies seconds after they
+   are allowed to idle, and survives if one core's deep idle state is
+   disabled (so the cluster can never power-collapse).
 
-3. **The trigger is interconnect `sync_state()`.** Cluster power collapse is
-   fine as long as the gladiator/memory NoC providers have not reached
-   `sync_state()`; until then they keep the bootloader's bandwidth votes.
-   Their last consumers are the CPU and LLCC bandwidth monitors; loading
-   `icc_bwmon` let the sync happen and hung the phone within 3 s. Disabling
-   the bwmon nodes makes it worse (the sync then happens immediately). The
-   fix in this DT keeps the nodes enabled with a compatible that no driver
-   binds, so `fw_devlink` keeps the providers waiting. Which bandwidth path
-   actually needs a sleep vote is still open.
+3. **Root cause: the bootloader's splash scan-out.** The bootloader leaves
+   the display controller (MDSS) fetching its splash screen from DDR. As long
+   as the interconnect providers have not reached `sync_state()`, they keep
+   their maximum boot-time bandwidth votes (the interconnect core drops them
+   for all nodes at once, when the last provider syncs), and the stray
+   scan-out is harmless. Once they sync and the cluster power-collapses,
+   nothing in Linux votes for that memory path and the SoC hangs. With the
+   display driver bound (Linux owns MDSS) it does not happen. Found by
+   bisecting with a debug kernel parameter that keeps chosen nodes' boot
+   votes; the decisive test was the same DT with only `&mdss` disabled,
+   which hangs ~10 s after boot. Earlier this DT carried a workaround that
+   kept the bandwidth monitors from binding so the providers never synced;
+   it is no longer needed. **Keep the display enabled.**
 
 ## Installing
 
@@ -141,9 +145,11 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
 
 * **Pin the kernel.** The display driver lives in your locally built
   `linux-postmarketos-qcom-sdm845`. A plain `apk upgrade` would replace it
-  with the repository build, which has no panel driver, and (because the
-  kernel has no module versioning) a mismatch between the flashed `vmlinuz`
-  and the installed modules breaks the USB gadget. On the phone:
+  with the repository build, which has no panel driver. Also, the kernel
+  enforces module signatures (lockdown is forced to integrity) and every
+  build signs with its own key: a flashed `vmlinuz` from one build cannot
+  load the modules of another, which first shows up as a missing USB
+  gadget. On the phone:
   `apk add "linux-postmarketos-qcom-sdm845=<your version>"` writes the pin
   to `/etc/apk/world`.
 * **Bluetooth:** `apk add linux-firmware-qca bluez`, and install
@@ -191,10 +197,10 @@ upstream `sdm845-xiaomi-perseus` DT: reset on GPIO 6, TE on GPIO 10
 (`mdp_vsync`), `vddio` from L14, `vci` from a fixed regulator switched by
 GPIO 35, DSI `vdda` from L26 and the PHY from L1.
 
-The driver is built in (`=y`): the pmOS kernel has DRM/msm built in and no
-module versioning, so building the driver as a module, or swapping only
-`vmlinuz`, can leave the installed modules mismatched. Install the rebuilt
-kernel package so `vmlinuz`, modules and initramfs come from one build.
+The driver is built in (`=y`), like the rest of DRM/msm in this kernel.
+Because modules are signature-checked with a per-build key, never swap only
+`vmlinuz`: install the rebuilt kernel package so `vmlinuz`, modules and
+initramfs come from one build.
 
 ## Debugging Without a UART
 
