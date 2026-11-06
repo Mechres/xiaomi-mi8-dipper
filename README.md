@@ -53,7 +53,8 @@ Nothing in this port depends on that fault.
 | Suspend to idle (s2idle) | ✅ RTC wake tested |
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
-| Modem, Wi-Fi, audio, cameras, DSPs | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
+| Audio: speaker (TAS2557), 2 microphones (WCD9340) | ✅ ADSP + q6 routing; see `tools/audio-defaults.sh` |
+| Modem, Wi-Fi, SLPI/CDSP, cameras | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
 
 ---
 
@@ -165,6 +166,15 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   copy `configs/mkinitfs-gpu.files` to `/etc/mkinitfs/files/` and run
   `mkinitfs`, then flash the regenerated `/boot/boot.img`.
 
+* **Audio firmware** (from your own stock fastboot ROM, not redistributable):
+  the ADSP image is split in `modem.img` (FAT): `mcopy -i modem.img
+  ::/image/adsp.* .`, merge it with `tools/pil-squash.py adsp.mdt
+  adsp.mbn` and install it as
+  `/lib/firmware/qcom/sdm845/Xiaomi/dipper/adsp.mbn`. The speaker amp needs
+  `/lib/firmware/tas2557_uCDSP.bin`, which is `firmware/tas2557_uCDSP_aac.bin`
+  (or the identical `_goer.bin`) from `vendor.img`. Then run
+  `tools/audio-defaults.sh` for the mixer routing.
+
 Measured power (battery current with the USB input limit set to 0, so the
 phone runs from the battery): **~200 mA with the screen on, ~120 mA with it
 off** at 4.26 V.
@@ -225,6 +235,8 @@ tools/reboot_to.c                      reboot into fastboot from Linux
 tools/99-mi8-kmsglog.sh                persistent + live kernel log hook
 tools/bt-address.start                 set the factory Bluetooth address
 configs/mkinitfs-gpu.files             GPU firmware into the initramfs
+tools/pil-squash.py                    merge split .mdt/.bNN firmware into .mbn
+tools/audio-defaults.sh                default speaker/mic mixer routing
 docs/BRING-UP-LOG.md                   full investigation, dead ends included
 ```
 

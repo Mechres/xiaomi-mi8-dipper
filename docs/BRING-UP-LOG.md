@@ -223,7 +223,29 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   letter says broke the Mi 8, but multi-touch reporting worked here with the
   v4 code. The `chip_id`/`fw_ver` sysfs files read 0 with this version.
 
-## 9. Misc observations
+## 9. Audio
+
+* ADSP: `adsp_pas` with `adsp.mbn` merged from the split `adsp.mdt/.bNN` in
+  the stock `modem.img` (the ADSP does not depend on the dead modem). The
+  in-kernel pd-mapper (`QCOM_PD_MAPPER`) is enough; `audio_pd` comes up and
+  the APR services register. `tools/pil-squash.py` was validated by
+  reproducing Xiaomi's own `a630_zap.elf` from its `.mdt` byte-for-byte;
+  the first version wrongly copied the whole `.mdt`, which packs the hash
+  segment right behind the headers.
+* Speaker: TI TAS2557 at 0x4c on i2c5 (reset GPIO 76), QUAT MI2S SD0,
+  driven by the `ti,tas2557` driver sdm845-mainline carries. Its firmware
+  `tas2557_uCDSP.bin` comes from `vendor/firmware/tas2557_uCDSP_{aac,goer}.bin`
+  (the two speaker-supplier variants are byte-identical).
+* Codec: WCD9340 on SLIMbus as on beryllium (reset GPIO 64, IRQ GPIO 54,
+  same mic bias voltages). The mic bias routing differs from beryllium:
+  downstream uses AMIC1 <- MIC BIAS4 and AMIC3 <- MIC BIAS1. With
+  beryllium's routing every ADC read only noise.
+* Verified without a listener: play a tone on the speaker and record each
+  ADC. ADC1 and ADC3 (the two built-in mics) jump from ~0.001 to 0.12-0.32
+  RMS, ADC2 (headset input; the Mi 8 has no jack) and ADC4 stay at noise.
+  That proves both the speaker and the microphones.
+
+## 10. Misc observations
 
 * `psci: [Firmware Bug]: failed to set PC mode: -3` at boot; the kernel then
   uses OSI mode, which works.

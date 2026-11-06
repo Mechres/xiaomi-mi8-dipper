@@ -5,7 +5,7 @@
 pkgname=device-xiaomi-dipper
 pkgdesc="Xiaomi Mi 8"
 pkgver=1
-pkgrel=8
+pkgrel=9
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"

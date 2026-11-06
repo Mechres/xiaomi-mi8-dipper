@@ -10,10 +10,11 @@
  * Enabled: CPU, UFS, USB (peripheral, for USB networking), RPMh regulators,
  * buttons and hall sensor, haptics, Bluetooth (WCN3990 on UART6), the GPU
  * (Adreno 630), the touchscreen (ST FTS5 on i2c14), the PMI8998 charger and
- * fuel gauge, and the display (Samsung EA8074 cmd-mode panel on DSI0; needs
- * the panel-samsung-ea8074 driver). The modem, Wi-Fi, DSPs, audio and
- * cameras are left disabled: this unit has a failed RF transceiver and the
- * modem crash-loops if started.
+ * fuel gauge, the display (Samsung EA8074 cmd-mode panel on DSI0; needs the
+ * panel-samsung-ea8074 driver) and audio (ADSP, WCD9340 codec, TAS2557
+ * speaker amplifier). The modem, Wi-Fi, SLPI/CDSP and cameras are left
+ * disabled: this unit has a failed RF transceiver and the modem crash-loops
+ * if started.
  */
 
 /dts-v1/;
@@ -22,7 +23,10 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
 #include "sdm845.dtsi"
+#include "sdm845-wcd9340.dtsi"
 #include "pm8998.dtsi"
 #include "pmi8998.dtsi"
 
@@ -293,6 +297,12 @@
 	compatible = "xiaomi,dipper-cpu-bwmon-unused";
 };
 
+/* Audio DSP (independent of the modem); firmware from the stock NON-HLOS image */
+&adsp_pas {
+	firmware-name = "qcom/sdm845/Xiaomi/dipper/adsp.mbn";
+	status = "okay";
+};
+
 &gcc {
 	protected-clocks = <GCC_QSPI_CORE_CLK>,
 			   <GCC_QSPI_CORE_CLK_SRC>,
@@ -384,6 +394,136 @@
 		touchscreen-size-x = <1080>;
 		touchscreen-size-y = <2248>;
 	};
+};
+
+&gpi_dma0 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+
+	/* Speaker amplifier (mono, bottom speaker) */
+	tas2557: audio-codec@4c {
+		compatible = "ti,tas2557";
+		reg = <0x4c>;
+		#sound-dai-cells = <1>;
+		ti,cdc-reset-gpios = <&tlmm 76 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* The amplifier uses one SD line of QUAT MI2S, as on beryllium */
+&q6afedai {
+	dai@22 {
+		reg = <QUATERNARY_MI2S_RX>;
+		qcom,sd-lines = <0>;
+	};
+};
+
+&q6asmdai {
+	dai@0 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
+	};
+
+	dai@1 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
+	};
+
+	dai@2 {
+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA3>;
+	};
+};
+
+&sound {
+	compatible = "qcom,db845c-sndcard", "qcom,sdm845-sndcard";
+	pinctrl-0 = <&quat_mi2s_active &quat_mi2s_sd0_active>;
+	pinctrl-names = "default";
+	model = "Xiaomi Mi 8";
+	/* Mic biases as in the downstream sdm845-tavil-snd-card routing */
+	audio-routing =
+		"RX_BIAS", "MCLK",
+		"AMIC1", "MIC BIAS4",
+		"AMIC2", "MIC BIAS2",
+		"AMIC3", "MIC BIAS1";
+
+	mm1-dai-link {
+		link-name = "MultiMedia1";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+		};
+	};
+
+	mm2-dai-link {
+		link-name = "MultiMedia2";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
+		};
+	};
+
+	mm3-dai-link {
+		link-name = "MultiMedia3";
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA3>;
+		};
+	};
+
+	speaker-dai-link {
+		link-name = "Speaker Playback";
+		cpu {
+			sound-dai = <&q6afedai QUATERNARY_MI2S_RX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&tas2557 0>;
+		};
+	};
+
+	slim-dai-link {
+		link-name = "SLIM Playback";
+		cpu {
+			sound-dai = <&q6afedai SLIMBUS_0_RX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&wcd9340 0>;
+		};
+	};
+
+	slimcap-dai-link {
+		link-name = "SLIM WCD Capture";
+		cpu {
+			sound-dai = <&q6afedai SLIMBUS_0_TX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&wcd9340 1>; /* AIF1_CAP */
+		};
+	};
+};
+
+&wcd9340 {
+	reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+	vdd-buck-supply = <&vreg_s4a_1p8>;
+	vdd-buck-sido-supply = <&vreg_s4a_1p8>;
+	vdd-tx-supply = <&vreg_s4a_1p8>;
+	vdd-rx-supply = <&vreg_s4a_1p8>;
+	vdd-io-supply = <&vreg_s4a_1p8>;
+	qcom,micbias1-microvolt = <2700000>;
+	qcom,micbias2-microvolt = <1800000>;
+	qcom,micbias3-microvolt = <2700000>;
+	qcom,micbias4-microvolt = <2700000>;
 };
 
 &ufs_mem_hc {
