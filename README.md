@@ -116,8 +116,7 @@ pmbootstrap checksum device-xiaomi-dipper
 pmbootstrap config device xiaomi-dipper
 pmbootstrap config ui none                    # headless
 
-# 3. kernel with the EA8074 panel driver (built in; the DT enables the
-#    display and expects it)
+# 3. kernel with the built-in EA8074 panel driver and the ST FTS5 touch fix
 kernel/apply-to-pmaports.sh "$A"
 pmbootstrap checksum linux-postmarketos-qcom-sdm845
 pmbootstrap build --force linux-postmarketos-qcom-sdm845
@@ -132,6 +131,11 @@ fastboot reboot
 To try a kernel or DT without touching the boot partition, use
 `pmbootstrap flasher boot` (or `fastboot boot <image>`) instead of
 `flash_kernel`.
+
+The touch fix was built against the `sdm845-7.1-rc1-r0` kernel source in
+pmaports commit `f2795e91d24aa6a0dbf2296611445156f7138393`. For an existing
+installation, raise the local `pkgrel` above the installed version before
+building and use that version in the kernel pin below.
 
 After boot the phone appears as a USB network adapter. It serves DHCP, so the
 host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
@@ -153,9 +157,9 @@ host gets `172.16.42.2`; then `ssh <user>@172.16.42.1`.
   build signs with its own key: a flashed `vmlinuz` from one build cannot
   load the modules of another, which first shows up as a missing USB
   gadget. Pin it in `/etc/apk/world` with an exact version, e.g.
-  `linux-postmarketos-qcom-sdm845=7.1_rc1-r6` (same for the device
-  package). Installing a local `.apk` file writes a `pkg><checksum` entry
-  instead, which is only a preference: `apk upgrade --available` replaced
+  `linux-postmarketos-qcom-sdm845=7.1_rc1-r7` using your local version, and pin
+  the device package the same way. Installing a local `.apk` file writes a
+  `pkg><checksum` entry instead, which is only a preference: `apk upgrade --available` replaced
   the kernel with the repository build despite it. Check with
   `apk upgrade -s --available`.
 * **Set the clock first.** The PMIC RTC starts in 1970, while the image's
@@ -253,7 +257,8 @@ worked, all in `tools/`:
 ```
 dts/sdm845-xiaomi-dipper.dts           device tree (GPL-2.0)
 kernel/0001-drm-panel-add-samsung-ea8074.patch  panel driver (GPL-2.0)
-kernel/apply-to-pmaports.sh            add it to the pmOS kernel package
+kernel/0002-input-stmfts-bound-fts5-fifo-reads.patch  FTS5 touch fix (GPL-2.0-only)
+kernel/apply-to-pmaports.sh            add the patches to the pmOS kernel package
 pmaports/device-xiaomi-dipper/         postmarketOS device package
 scripts/fetch-dt-headers.sh            download DT sources from sdm845-mainline
 scripts/build-dtb.sh                   compile the DTB

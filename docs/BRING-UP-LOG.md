@@ -224,6 +224,25 @@ of the touch controller (ST FTS `st,fts` at 0x49 on `i2c@a98000`, IRQ GPIO
   letter says broke the Mi 8, but multi-touch reporting worked here with the
   v4 code. The `chip_id`/`fw_ver` sysfs files read 0 with this version.
 
+### Intermittent touch under Phosh
+
+On a second Mi 8 with Phosh, a tap sometimes needed several attempts. At
+rest the driver reported ten active slots and `BTN_TOUCH=1`. In a
+three-second I²C trace, the displayed 64-byte prefix was identical across
+all 96 reads of 256 bytes. A separate 8-byte read at rest returned no event.
+
+The [FTS5 patch](../kernel/0002-input-stmfts-bound-fts5-fifo-reads.patch)
+reads the first event, then reads only the queued records indicated by
+its count. It also decodes the high-nibble event ID and lets the parser
+reach a release that follows a status record. The downstream driver was
+the reference for the two reads.
+[LineageOS FTS5 driver](https://github.com/LineageOS/android_kernel_xiaomi_sdm845/blob/aa8adfe9bf212c6e93238a86980b4024da4f819a/drivers/input/touchscreen/fts_521/fts.c#L3315-L3372)
+
+With the patched kernel started via `fastboot boot`, the controller had
+zero active slots at rest. Three separate taps at the Phosh greeter each
+produced a press and a release. The same image was written to `boot` and
+rebooted, and Phosh started with zero active slots at rest again.
+
 ## 9. Audio
 
 * ADSP: `adsp_pas` with `adsp.mbn` merged from the split `adsp.mdt/.bNN` in
