@@ -9,6 +9,9 @@ the **Xiaomi Mi 8 (`dipper`)** as a headless node, reachable over USB
 networking with SSH, with the built-in AMOLED panel as a text console.
 Touch, modem and Wi-Fi are not used.
 
+See the [optional Phosh setup](docs/PHOSH.md) for desktop installation and
+Windows USB networking troubleshooting.
+
 No Mi 8 device tree exists in mainline or in the sdm845-mainline tree. This
 one was written for this phone and debugged without a UART. Three
 non-obvious fixes were needed before it would boot and stay up; they are
@@ -100,6 +103,8 @@ different debugging technique to find; see the bring-up log for the evidence.
 You need: an unlocked Mi 8, `pmbootstrap`, `fastboot`, `dtc` and `cpp` on the
 host. **This erases `userdata` and replaces `boot`.** To go back, flash the
 stock fastboot ROM with its `flash_all.sh` (never `flash_all_lock.sh`).
+The [recovery checklist](docs/PHOSH.md#keep-android-recovery-ready) covers
+preparing a return to LineageOS.
 
 ```sh
 # 1. device tree (only the DT sources are downloaded, not a kernel clone)
