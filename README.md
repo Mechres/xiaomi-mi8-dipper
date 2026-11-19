@@ -57,7 +57,7 @@ Nothing in this port depends on that fault.
 | GPU (Adreno 630, Freedreno) | ✅ OpenGL ES 3.2 / GL via Mesa (`FD630`), devfreq 257–710 MHz; needs the zap shader from your stock ROM |
 | Touchscreen (ST FTS5, i2c14) | ✅ multi-touch through `stmfts` (`st,stmfts5`, FTS5 support from sdm845-mainline 7.1) |
 | Audio: speaker (TAS2557), earpiece and 2 microphones (WCD9340) | ✅ ADSP + q6 routing; ALSA UCM profile in `configs/ucm2`, plain-ALSA defaults in `tools/audio-defaults.sh` |
-| Modem, Wi-Fi, SLPI/CDSP, cameras | ❌ disabled in the DT (Wi-Fi needs the modem on SDM845) |
+| Modem, Wi-Fi, SLPI/CDSP, cameras | Disabled in the default DT. [Experimental Wi-Fi](docs/WIFI.md) has scanned on a Mi 8 with a working modem. |
 
 ---
 
@@ -252,6 +252,7 @@ worked, all in `tools/`:
 
 ```
 dts/sdm845-xiaomi-dipper.dts           device tree (GPL-2.0)
+dts/sdm845-xiaomi-dipper-wifi.dts      optional modem and Wi-Fi variant (GPL-2.0)
 kernel/0001-drm-panel-add-samsung-ea8074.patch  panel driver (GPL-2.0)
 kernel/apply-to-pmaports.sh            add it to the pmOS kernel package
 pmaports/device-xiaomi-dipper/         postmarketOS device package
